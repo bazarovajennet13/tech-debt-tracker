@@ -1,0 +1,18 @@
+[
+  {
+    "id": 1,
+    "title": "Отсутствуют тесты для модуля оплаты",
+    "project_id": 1,
+    "author_id": 1,
+    "priority_id": 3,
+    "closed": false
+  },
+  {
+    "id": 2,
+    "title": "Устаревшая библиотека requests",
+    "project_id": 1,
+    "author_id": 2,
+    "priority_id": 2,
+    "closed": true
+  }
+]

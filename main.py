@@ -1,63 +1,172 @@
-"""Система учёта технического долга.
+"""Система учёта технического долга — точка входа."""
 
-Начальный сценарий ПР1: оценка приоритета задачи долга,
-оценка времени исправления и определение статуса задачи.
-"""
+from storage import load_dict, load_list, save_json
+from authors import add_author, find_author, get_author_name
+from projects import add_project, find_project, get_project_name
+from priorities import add_priority, get_priority_name, get_priority_weight
+from debts import (add_debt, find_debt, filter_by_project, filter_by_author,
+                   filter_by_priority, sort_by_priority, close_debt,
+                   delete_debt, statistics)
+from utils import input_int
 
-project_name: str = "Backend API"
-debt_title: str = "Отсутствуют тесты для модуля оплаты"
-
-impact: int = 4       # влияние на систему (1–5)
-urgency: int = 3      # срочность (1–5)
-complexity: int = 2   # сложность исправления (1–5)
-files_count: int = 7  # сколько файлов затронет
-days_left: int = 10   # сколько дней до срока
-
-
-def calculate_priority_score(impact: int, urgency: int) -> int:
-    """Вернуть балл приоритета задачи (от 2 до 10)."""
-    return impact + urgency 
+AUTHORS_FILE = "data/authors.json"
+PROJECTS_FILE = "data/projects.json"
+PRIORITIES_FILE = "data/priorities.json"
+DEBTS_FILE = "data/debts.json"
 
 
-def estimate_fix_time(complexity: int, files_count: int) -> float:
-    """Вернуть оценку времени исправления задачи в часах."""
-    base_hours = complexity * 2
-    file_hours = files_count * 0.5
-    return base_hours + file_hours
+def show_authors(authors: dict) -> None:
+    if not authors:
+        print("Авторов нет.")
+        return
+    for aid, a in authors.items():
+        print(f"[{aid}] {a['name']} — {a['email']}")
 
 
-def get_debt_status(priority_score: int, days_left: int) -> str:
-    """Вернуть текстовый статус задачи долга."""
-    if priority_score >= 8 and days_left <= 5:
-        return "Критично, исправлять срочно"
-    if priority_score >= 6 and days_left <= 10:
-        return "Высокий приоритет"
-    if priority_score >= 4:
-        return "Средний приоритет"
-    return "Низкий приоритет"
+def show_projects(projects: dict) -> None:
+    if not projects:
+        print("Проектов нет.")
+        return
+    for pid, p in projects.items():
+        print(f"[{pid}] {p['name']} — {p['description']}")
+
+
+def show_priorities(priorities: dict) -> None:
+    if not priorities:
+        print("Приоритетов нет.")
+        return
+    for pid, p in priorities.items():
+        print(f"[{pid}] {p['name']} (вес {p['weight']})")
+
+
+def show_debts(debts: list, projects: dict, authors: dict, priorities: dict) -> None:
+    if not debts:
+        print("Задач долга нет.")
+        return
+    for d in debts:
+        mark = "✔" if d["closed"] else "✗"
+        pname = get_project_name(projects, d["project_id"])
+        aname = get_author_name(authors, d["author_id"])
+        prname = get_priority_name(priorities, d["priority_id"])
+        print(f"[{d['id']}] {mark} {d['title']} | {pname} | {aname} | {prname}")
 
 
 def main() -> None:
-    """Точка входа: вывести отчёт по одной задаче долга."""
-    priority_score = calculate_priority_score(impact, urgency)
-    estimated_hours = estimate_fix_time(complexity, files_count)
-    status = get_debt_status(priority_score, days_left)
+    authors = load_dict(AUTHORS_FILE)
+    projects = load_dict(PROJECTS_FILE)
+    priorities = load_dict(PRIORITIES_FILE)
+    debts = load_list(DEBTS_FILE)
 
-    print("=" * 45)
-    print("СИСТЕМА УЧЁТА ТЕХНИЧЕСКОГО ДОЛГА")
-    print("=" * 45)
-    print(f"Проект:        {project_name}")
-    print(f"Задача:        {debt_title}")
-    print(f"Влияние:       {impact}")
-    print(f"Срочность:     {urgency}")
-    print(f"Сложность:     {complexity}")
-    print(f"Файлов:        {files_count}")
-    print(f"Дней до срока: {days_left}")
-    print("-" * 45)
-    print(f"Балл приоритета: {priority_score}")
-    print(f"Оценка времени:  {estimated_hours:.1f} ч")
-    print(f"Статус задачи:   {status}")
-    print("=" * 45)
+    while True:
+        print("\n=== Система учёта технического долга ===")
+        print("1.  Показать авторов")
+        print("2.  Добавить автора")
+        print("3.  Найти автора")
+        print("4.  Показать проекты")
+        print("5.  Добавить проект")
+        print("6.  Найти проект")
+        print("7.  Показать приоритеты")
+        print("8.  Добавить приоритет")
+        print("9.  Показать задачи долга")
+        print("10. Добавить задачу")
+        print("11. Найти задачу")
+        print("12. Задачи проекта")
+        print("13. Задачи автора")
+        print("14. Задачи по приоритету")
+        print("15. Сортировать по приоритету")
+        print("16. Закрыть задачу")
+        print("17. Удалить задачу")
+        print("18. Статистика")
+        print("0.  Выход")
+
+        choice = input("Действие: ")
+
+        try:
+            if choice == "1":
+                show_authors(authors)
+            elif choice == "2":
+                name = input("Имя: ")
+                email = input("Email: ")
+                add_author(authors, name, email)
+                save_json(AUTHORS_FILE, authors)
+                print("Автор добавлен.")
+            elif choice == "3":
+                q = input("Подстрока: ")
+                for aid, a in find_author(authors, q):
+                    print(f"[{aid}] {a['name']} — {a['email']}")
+            elif choice == "4":
+                show_projects(projects)
+            elif choice == "5":
+                name = input("Название проекта: ")
+                desc = input("Описание: ")
+                add_project(projects, name, desc)
+                save_json(PROJECTS_FILE, projects)
+                print("Проект добавлен.")
+            elif choice == "6":
+                q = input("Подстрока: ")
+                for pid, p in find_project(projects, q):
+                    print(f"[{pid}] {p['name']}")
+            elif choice == "7":
+                show_priorities(priorities)
+            elif choice == "8":
+                name = input("Название приоритета: ")
+                w = input_int("Вес (1–5): ")
+                try:
+                    add_priority(priorities, name, w)
+                    save_json(PRIORITIES_FILE, priorities)
+                    print("Приоритет добавлен.")
+                except ValueError as e:
+                    print(f"Ошибка: {e}")
+            elif choice == "9":
+                show_debts(debts, projects, authors, priorities)
+            elif choice == "10":
+                title = input("Название задачи: ")
+                pid = input_int("ID проекта: ")
+                aid = input_int("ID автора: ")
+                prid = input_int("ID приоритета: ")
+                if pid not in projects or aid not in authors or prid not in priorities:
+                    print("Проверьте ID: проект/автор/приоритет не найдены.")
+                    continue
+                add_debt(debts, title, pid, aid, prid)
+                save_json(DEBTS_FILE, debts)
+                print("Задача добавлена.")
+            elif choice == "11":
+                q = input("Подстрока: ")
+                show_debts(find_debt(debts, q), projects, authors, priorities)
+            elif choice == "12":
+                pid = input_int("ID проекта: ")
+                show_debts(filter_by_project(debts, pid), projects, authors, priorities)
+            elif choice == "13":
+                aid = input_int("ID автора: ")
+                show_debts(filter_by_author(debts, aid), projects, authors, priorities)
+            elif choice == "14":
+                prid = input_int("ID приоритета: ")
+                show_debts(filter_by_priority(debts, prid), projects, authors, priorities)
+            elif choice == "15":
+                show_debts(sort_by_priority(debts, priorities), projects, authors, priorities)
+            elif choice == "16":
+                did = input_int("ID задачи: ")
+                if close_debt(debts, did):
+                    save_json(DEBTS_FILE, debts)
+                    print("Задача закрыта.")
+                else:
+                    print("Не найдена.")
+            elif choice == "17":
+                did = input_int("ID задачи: ")
+                if delete_debt(debts, did):
+                    save_json(DEBTS_FILE, debts)
+                    print("Удалена.")
+                else:
+                    print("Не найдена.")
+            elif choice == "18":
+                print(statistics(debts))
+            elif choice == "0":
+                print("Выход.")
+                break
+            else:
+                print("Неверный выбор.")
+        except ValueError as e:
+            print(f"Ошибка ввода: {e}")
 
 
 if __name__ == "__main__":
